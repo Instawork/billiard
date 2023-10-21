@@ -1593,6 +1593,20 @@ class Pool:
         debug('closing pool')
         if self._state == RUN:
             self._state = CLOSE
+
+            # Send soft timeout to any still running workers
+            cache = copy.copy(self._cache)
+            dirty = set()
+
+            # Remove dirty items not in cache anymore
+            if dirty:
+                dirty = set(k for k in dirty if k in cache)
+
+            for i, job in cache.items():
+                if i not in dirty:
+                    self.on_soft_timeout(job)
+                    dirty.add(i)
+
             if self._putlock:
                 self._putlock.clear()
             self._worker_handler.close()
